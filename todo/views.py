@@ -16,22 +16,45 @@ class ToDoList(APIView):
         return Response(todo_data.data)
 
     def post(self, request):
-        todo = ToDoSerializer(data=request.data)
-        if todo.is_valid():
-            todo_item = todo.save()
+        serializer = ToDoSerializer(data=request.data)
+        if serializer.is_valid():
+            todo_item = serializer.save()
             todo_item.completed = False
             todo_item.url = reverse('todo_one', args=[todo_item.id], request=request)
             todo_item.save()
-        return Response(todo.data)
+            return Response(serializer.data, status=201)
+        return Response(None, status=400)
+
 
     def delete(self, request):
         ToDo.objects.all().delete()
-        return Response(None)
+        return Response(None, status=204)
 
 
 class ToDoOne(APIView):
     def get(self, request, todo_id):
-        todo = ToDo.objects.get(pk=todo_id)
+        try:
+            todo = ToDo.objects.get(pk=todo_id)
+            serializer = ToDoSerializer(todo)
+            return Response(serializer.data, status=200)
+        except ToDo.DoesNotExist:
+            return Response(None, status=400)
 
-        serializer = ToDoSerializer(todo)
-        return Response(serializer.data)
+    def patch(self, request, todo_id):
+        try:    
+            todo = ToDo.objects.get(pk=todo_id)
+            serializer = ToDoSerializer(data=request.data, instance=todo, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(None, status=200)
+        except ToDo.DoesNotExist:
+            return Response(None, status=400)
+
+    def delete(self, request, todo_id):
+        try:
+            todo = ToDo.objects.get(pk=todo_id)
+            todo.delete()
+            return Response(None, status=204)
+        except ToDo.DoesNotExist:
+            return Response(None, status=400)
